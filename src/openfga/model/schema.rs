@@ -220,7 +220,7 @@ mod tests {
         assert_eq!(role_type("default", "admin"), "role:default_admin");
         assert_eq!(group_type("default", "developers"), "group:default_developers");
         assert_eq!(
-            resource_object("logs", "my_stream"),
+            resource_object("default", "logs", "my_stream"),
             "logs:my_stream"
         );
         assert_eq!(

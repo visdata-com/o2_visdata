@@ -158,8 +158,6 @@ pub async fn update_connector(
 
 #[cfg(test)]
 mod tests {
-    use super::*;
-
     #[test]
     fn test_oidc_config_serialization() {
         let config = serde_json::json!({
