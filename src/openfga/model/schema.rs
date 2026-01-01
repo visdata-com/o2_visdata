@@ -188,9 +188,8 @@ pub fn group_type(org_id: &str, group_name: &str) -> String {
 /// Format: "{resource_type}:{entity_id}"
 /// e.g., "logs:my_stream" or "dashboard:my_dashboard"
 ///
-/// Note: org_id is kept for API compatibility but the actual object format
-/// in store.yaml uses "{type}:{entity_id}" without org prefix in entity_id.
-/// The org relationship is established via owningOrg tuples.
+/// Organization isolation is achieved through owningOrg relation tuples,
+/// not through the object name. This is consistent with enterprise o2_openfga.
 pub fn resource_object(_org_id: &str, resource_type: &str, entity_id: &str) -> String {
     format!("{}:{}", resource_type, entity_id)
 }

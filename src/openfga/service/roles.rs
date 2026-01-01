@@ -199,7 +199,7 @@ pub async fn get_role_permissions(
     // Use role#has relation for permission queries (as defined in store.yaml)
     let role_has = format!("{}#has", role_object);
 
-    tracing::debug!(
+    println!(
         "[RBAC] get_role_permissions: org={}, role={}, resource_type={}, role_has={}",
         org_id, role_name, resource_type, role_has
     );
@@ -213,39 +213,44 @@ pub async fn get_role_permissions(
 
     let tuples = visdata.openfga().read(Some(filter)).await?;
 
-    tracing::debug!(
+    println!(
         "[RBAC] Found {} tuples for role_has={}",
         tuples.len(), role_has
     );
 
+    // Log all tuples for debugging
+    for tuple in &tuples {
+        println!(
+            "[RBAC] Tuple: user={}, relation={}, object={}",
+            tuple.key.user, tuple.key.relation, tuple.key.object
+        );
+    }
+
     // Filter to matching resource type and convert to PermissionEntry
-    // Format: "{resource_type}:{org_id}_{entity_id}" e.g., "dfolder:default_my_folder"
-    let resource_prefix = format!("{}:{}_", resource_type, org_id);
+    // Two formats (consistent with enterprise o2_openfga):
+    // - Regular resources: "{resource_type}:{entity_id}" e.g., "dfolder:my_folder"
+    // - All resources: "{resource_type}:_all_{org_id}" e.g., "dfolder:_all_default"
+    //
+    // Note: Organization isolation is achieved through the role itself (role:org_name),
+    // not through resource filtering. Each org has its own roles.
+    let resource_prefix = format!("{}:", resource_type);
 
     let permissions: Vec<PermissionEntry> = tuples
         .into_iter()
         .filter(|t| {
-            let matches = t.key.object.starts_with(&resource_prefix);
+            let is_this_type = t.key.object.starts_with(&resource_prefix);
             tracing::debug!(
-                "[RBAC] Checking tuple object={}, prefix={}, matches={}",
-                t.key.object, resource_prefix, matches
+                "[RBAC] Checking tuple object={}, is_this_type={}",
+                t.key.object, is_this_type
             );
-            matches
+            is_this_type
         })
         .map(|t| {
-            let entity = t.key.object
-                .strip_prefix(&resource_prefix)
-                .unwrap_or(&t.key.object)
-                .to_string();
-
             let permission = relation_to_permission(&t.key.relation);
 
-            // Return format expected by frontend: "resource_type:_all_{org_id}" for type-level permissions
-            let object = if entity == "all" {
-                format!("{}:_all_{}", resource_type, org_id)
-            } else {
-                format!("{}:{}", resource_type, entity)
-            };
+            // Return format expected by frontend
+            // Object format is already correct: "resource_type:entity_id" or "resource_type:_all_{org}"
+            let object = t.key.object.clone();
 
             PermissionEntry {
                 object,
@@ -291,6 +296,11 @@ pub async fn add_role_permissions(
         } else {
             schema::resource_object(org_id, resource_type, entity_id)
         };
+
+        println!(
+            "[RBAC] add_role_permissions: perm.object={}, resource_type={}, entity_id={}, resource={}, role_has={}, relation={}",
+            perm.object, resource_type, entity_id, resource, role_has, relation
+        );
 
         writes.push(TupleKey::new(&role_has, relation, &resource));
     }

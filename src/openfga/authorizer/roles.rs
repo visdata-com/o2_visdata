@@ -69,10 +69,18 @@ pub async fn update_role(
     add_users: Option<&HashSet<String>>,
     remove_users: Option<&HashSet<String>>,
 ) -> Result<()> {
+    println!(
+        "[RBAC] authorizer::roles::update_role called: org_id={}, role_name={}, add_perms={:?}, remove_perms={:?}",
+        org_id, role_name, add_permissions.map(|p| p.len()), remove_permissions.map(|p| p.len())
+    );
+
     // Add permissions
     if let Some(perms) = add_permissions {
+        println!("[RBAC] add_permissions: {} perms, is_empty={}", perms.len(), perms.is_empty());
         if !perms.is_empty() {
+            println!("[RBAC] Calling add_role_permissions...");
             role_service::add_role_permissions(org_id, role_name, perms).await?;
+            println!("[RBAC] add_role_permissions completed");
         }
     }
 
